@@ -1,38 +1,40 @@
 import Container from "../components/layout/Container";
 import ProductCard from "../components/ecommerce/ProductCard";
+import ProductGrid from "../components/ecommerce/ProductGrid";
+import Hero from "../components/home/Hero";
+import { Link } from "react-router-dom";
 
-const MOCK_PRODUCTS = [
-  {
-    id: 1,
-    name: "Remera Negra",
-    price: 12000,
-    image: "https://via.placeholder.com/300",
-  },
-  {
-    id: 2,
-    name: "Buzo Oversize",
-    price: 25000,
-    image: "https://via.placeholder.com/300",
-  },
-];
+import { MOCK_PRODUCTS } from "../data/products";
 
 export default function Home() {
   return (
-    <Container>
-      <h1 className="text-xl font-semibold my-6">
-        Productos destacados
-      </h1>
+    <>
+      <Hero />
 
-      <div className="grid grid-cols-2 gap-4">
-        {MOCK_PRODUCTS.map((p) => (
-          <ProductCard
-            key={p.id}
-            name={p.name}
-            price={p.price}
-            image={p.image}
-          />
-        ))}
-      </div>
-    </Container>
+      <Container>
+        <div className="flex justify-between items-center my-10">
+          <h2 className="text-2xl font-bold">
+            Productos destacados
+          </h2>
+          <Link
+            to="/products"
+            className="text-sm text-green-600 hover:underline"
+          >
+            Ver todos →
+          </Link>
+        </div>
+
+        <ProductGrid>
+          {MOCK_PRODUCTS.map((product) => (
+            <Link
+              key={product.id}
+              to={`/products/${product.id}`}
+            >
+              <ProductCard {...product} />
+            </Link>
+          ))}
+        </ProductGrid>
+      </Container>
+    </>
   );
 }

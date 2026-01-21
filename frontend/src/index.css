@@ -1,8 +1,124 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Reset mínimo */
-html, body {
-  @apply bg-white text-black;
+@layer base {
+  html {
+    font-family: "Inter", system-ui, sans-serif;
+    background-color: #fafafa;
+    color: #0a0a0a;
+  }
+
+  h1, h2, h3, h4 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+}
+
+* {
+  scroll-behavior: smooth;
+}
+
+button,
+a {
+  transition: all 0.2s ease;
+}
+
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl shadow-sm hover:shadow-xl transition-transform transition-opacity duration-300;
+  }
+
+  .btn-primary {
+    @apply bg-black text-white rounded-xl px-6 py-3 font-medium
+    hover:bg-neutral-900 transition-transform transition-opacity;
+  }
+
+  .btn-accent {
+    @apply bg-green-500 text-black rounded-xl px-6 py-3 font-semibold
+    hover:bg-green-400 transition-transform transition-opacity;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-gray-300 px-4 py-3
+    focus:outline-none focus:ring-2 focus:ring-black;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.25s ease-out;
+}
+
+/* === SISTEMA VISUAL UNIFICADO === */
+
+:root {
+  --color-primary: #000000;
+  --color-bg: #ffffff;
+  --color-muted: #6b7280;
+}
+
+/* Links navegación */
+.nav-link {
+  color: var(--color-primary);
+  transition: opacity 0.2s ease;
+}
+
+.nav-link:hover {
+  opacity: 0.6;
+}
+
+/* Botón principal */
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  border-radius: 0.75rem;
+  height: 44px;
+  padding: 0 1.5rem;
+  font-weight: 500;
+  transition: opacity 0.2s ease;
+}
+
+.btn-primary:hover {
+  opacity: 0.85;
+}
+
+/* Botones icono */
+.icon-btn {
+  padding: 0.5rem;
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+.icon-btn:hover {
+  background: #f3f4f6;
+}
+
+/* Badge carrito */
+.cart-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  height: 16px;
+  width: 16px;
+  border-radius: 9999px;
+  background: black;
+  color: white;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

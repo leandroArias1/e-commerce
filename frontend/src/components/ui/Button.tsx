@@ -1,24 +1,21 @@
-type Props = {
-  children: React.ReactNode;
-  onClick?: () => void;
-  variant?: "primary" | "secondary";
-};
+import { motion, type HTMLMotionProps } from "framer-motion";
+import type { ReactNode } from "react";
 
-export default function Button({
-  children,
-  onClick,
-  variant = "primary",
-}: Props) {
-  const base =
-    "w-full py-3 text-sm font-medium transition rounded";
-  const styles = {
-    primary: "bg-black text-white hover:bg-gray-900",
-    secondary: "border border-black text-black",
-  };
+interface ButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
+  children: ReactNode;
+  className?: string;
+}
 
+export default function Button({ children, className = "", ...props }: ButtonProps) {
   return (
-    <button onClick={onClick} className={`${base} ${styles[variant]}`}>
+    <motion.button
+      whileTap={{ scale: 0.97 }}
+      whileHover={{ scale: 1.02 }}
+      transition={{ duration: 0.15 }}
+      className={`rounded-lg px-4 py-3 font-medium ${className}`}
+      {...props}
+    >
       {children}
-    </button>
+    </motion.button>
   );
 }
