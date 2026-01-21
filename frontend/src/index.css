@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Reset mínimo */
+html, body {
+  @apply bg-white text-black;
+}
