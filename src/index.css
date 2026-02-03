@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply scroll-smooth;
+  }
+  
+  body {
+    @apply bg-black text-white antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-6 py-3 font-semibold rounded-lg transition-all duration-300;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-black hover:bg-primary-dark;
+  }
+
+  .btn-secondary {
+    @apply bg-accent text-white hover:bg-accent-dark;
+  }
+
+  .btn-outline {
+    @apply border-2 border-primary text-primary hover:bg-primary hover:text-black;
+  }
+
+  .card {
+    @apply bg-dark-gray border border-gray rounded-lg p-6;
+  }
+
+  .input {
+    @apply w-full px-4 py-3 bg-dark-gray border border-gray rounded-lg text-white placeholder-gray-light focus:border-primary focus:outline-none transition-colors;
+  }
+
+  .product-card {
+    @apply bg-dark-gray rounded-lg overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-primary/10;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .badge-new {
+    @apply bg-warning/20 text-warning border border-warning/30;
+  }
+
+  .badge-sale {
+    @apply bg-danger/20 text-danger border border-danger/30;
+  }
+
+  .badge-success {
+    @apply bg-success/20 text-success border border-success/30;
+  }
+
+  .badge-info {
+    @apply bg-info/20 text-info border border-info/30;
+  }
+}
+
+@layer utilities {
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary via-accent to-primary-dark bg-clip-text text-transparent;
+  }
+
+  .bg-gradient-dark {
+    background: linear-gradient(180deg, #0A0A0A 0%, #1A1A1A 100%);
+  }
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-black;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-accent rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-accent-dark;
+}
+
+/* Loader */
+.loader {
+  border: 3px solid #1A1A1A;
+  border-top: 3px solid #E8D5C4;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
