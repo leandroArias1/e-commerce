@@ -1,18 +1,15 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Heart, ShoppingCart, Star, Minus, Plus, Truck, Shield, RotateCcw } from 'lucide-react';
-import { products } from '../data/products';
 import { useStore } from '../store/useStore';
 import { useToast } from '../components/Toast';
 import ProductCard from '../components/ProductCard';
-import { motion } from 'framer-motion';
 
 const ProductDetail = () => {
   const { slug } = useParams();
   const toast = useToast();
+  const { products, addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useStore();
   const product = products.find(p => p.slug === slug);
-  
-  const { addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useStore();
   
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
@@ -79,11 +76,7 @@ const ProductDetail = () => {
         {/* Product Section */}
         <div className="grid lg:grid-cols-2 gap-12 mb-20">
           {/* Images */}
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-          >
+          <div>
             <div className="sticky top-24">
               {/* Main image */}
               <div className="aspect-square bg-dark-gray rounded-2xl overflow-hidden mb-4 border-2 border-primary/20">
@@ -112,14 +105,10 @@ const ProductDetail = () => {
                 </div>
               )}
             </div>
-          </motion.div>
+          </div>
 
           {/* Info */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-          >
+          <div>
             {/* Badges */}
             <div className="flex gap-2 mb-4">
               {product.new && (
@@ -278,7 +267,7 @@ const ProductDetail = () => {
                 <p className="text-xs text-gray-light">30 días cambio</p>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
 
         {/* Reviews */}

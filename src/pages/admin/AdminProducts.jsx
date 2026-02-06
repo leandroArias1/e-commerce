@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { products as initialProducts, categories } from '../../data/products';
-import { Search, Plus, Edit2, Trash2, Upload, X } from 'lucide-react';
+import { useStore } from '../../store/useStore';
+import { Search, Plus, Edit2, Trash2, X } from 'lucide-react';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useToast } from '../../components/Toast';
 
 const AdminProducts = () => {
   const toast = useToast();
-  const [products, setProducts] = useState(initialProducts);
+  const { products, categories, addProduct, updateProduct, deleteProduct } = useStore();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -15,145 +16,79 @@ const AdminProducts = () => {
   const [imagePreview, setImagePreview] = useState('');
   
   const [formData, setFormData] = useState({
-    name: '',
-    price: '',
-    originalPrice: '',
-    category: '',
-    stock: '',
-    description: '',
-    sizes: ['S', 'M', 'L', 'XL'],
-    colors: ['Black', 'White'],
-    image: '',
+    name: '', price: '', originalPrice: '', category: '', stock: '', description: '',
+    sizes: ['S', 'M', 'L', 'XL'], colors: ['Black', 'White'], image: '', featured: false, new: false, sale: false,
   });
 
-  // Filtrar productos
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         p.sku?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = !selectedCategory || p.category === parseInt(selectedCategory);
     return matchesSearch && matchesCategory;
   });
 
+  const getCategoryName = (catId) => {
+    const cat = categories.find(c => c.id === catId);
+    return cat ? cat.name : 'Sin categoría';
+  };
+
   const handleEdit = (product) => {
     setEditingProduct(product);
     setFormData({
-      name: product.name,
-      price: product.price,
-      originalPrice: product.originalPrice || '',
-      category: product.category,
-      stock: product.stock,
-      description: product.description,
-      sizes: product.sizes || ['S', 'M', 'L', 'XL'],
-      colors: product.colors || ['Black', 'White'],
-      image: product.image || '',
+      name: product.name, price: product.price, originalPrice: product.originalPrice || '',
+      category: product.category.toString(), stock: product.stock, description: product.description || '',
+      sizes: product.sizes || ['S', 'M', 'L', 'XL'], colors: product.colors || ['Black', 'White'],
+      image: product.image || '', featured: product.featured || false, new: product.new || false, sale: product.sale || false,
     });
     setImagePreview(product.image || '');
     setShowModal(true);
   };
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        toast.error('Por favor seleccioná una imagen válida');
-        return;
-      }
-      
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('La imagen no debe pesar más de 5MB');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result;
-        setImagePreview(base64String);
-        setFormData(prev => ({ 
-          ...prev, 
-          image: base64String
-        }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleDeleteClick = (product) => {
-    setDeleteModal({
-      isOpen: true,
-      productId: product.id,
-      productName: product.name
-    });
-  };
-
-  const handleDeleteConfirm = () => {
-    setProducts(products.filter(p => p.id !== deleteModal.productId));
-    toast.success(`Producto "${deleteModal.productName}" eliminado correctamente`);
-    setDeleteModal({ isOpen: false, productId: null, productName: '' });
+  const handleImageChange = (e) => {
+    const url = e.target.value;
+    setFormData(prev => ({ ...prev, image: url }));
+    setImagePreview(url);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
+    const productData = {
+      name: formData.name,
+      price: Number(formData.price),
+      originalPrice: formData.originalPrice ? Number(formData.originalPrice) : null,
+      category: Number(formData.category),
+      stock: Number(formData.stock),
+      description: formData.description,
+      sizes: formData.sizes,
+      colors: formData.colors,
+      image: formData.image || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400',
+      featured: formData.featured,
+      new: formData.new,
+      sale: formData.originalPrice ? true : formData.sale,
+    };
+
     if (editingProduct) {
-      // Editar producto existente
-      setProducts(products.map(p => 
-        p.id === editingProduct.id 
-          ? { 
-              ...p, 
-              name: formData.name,
-              price: Number(formData.price), 
-              stock: Number(formData.stock),
-              category: Number(formData.category),
-              originalPrice: formData.originalPrice ? Number(formData.originalPrice) : null,
-              description: formData.description,
-              sizes: formData.sizes,
-              colors: formData.colors,
-              image: formData.image || p.image,
-              images: formData.image ? [formData.image] : p.images,
-            }
-          : p
-      ));
-      toast.success(`Producto "${formData.name}" actualizado correctamente`);
+      updateProduct(editingProduct.id, productData);
+      toast.success('Producto actualizado');
     } else {
-      // Crear nuevo producto
-      const newProduct = {
-        id: Math.max(...products.map(p => p.id)) + 1,
-        slug: formData.name.toLowerCase().replace(/\s+/g, '-'),
-        sku: `PROD-${Math.floor(Math.random() * 10000)}`,
-        name: formData.name,
-        price: Number(formData.price),
-        stock: Number(formData.stock),
-        category: Number(formData.category),
-        originalPrice: formData.originalPrice ? Number(formData.originalPrice) : null,
-        description: formData.description,
-        sizes: formData.sizes,
-        colors: formData.colors,
-        image: formData.image || '/products/placeholder.jpg',
-        images: formData.image ? [formData.image] : ['/products/placeholder.jpg'],
-        featured: false,
-        new: true,
-        sale: formData.originalPrice ? true : false,
-        rating: 0,
-        reviews: 0,
-      };
-      setProducts([...products, newProduct]);
-      toast.success(`Producto "${formData.name}" creado correctamente`);
+      addProduct(productData);
+      toast.success('Producto creado');
     }
     
+    closeModal();
+  };
+
+  const closeModal = () => {
     setShowModal(false);
     setEditingProduct(null);
     setImagePreview('');
-    setFormData({
-      name: '',
-      price: '',
-      originalPrice: '',
-      category: '',
-      stock: '',
-      description: '',
-      sizes: ['S', 'M', 'L', 'XL'],
-      colors: ['Black', 'White'],
-      image: '',
-    });
+    setFormData({ name: '', price: '', originalPrice: '', category: '', stock: '', description: '', sizes: ['S', 'M', 'L', 'XL'], colors: ['Black', 'White'], image: '', featured: false, new: false, sale: false });
+  };
+
+  const handleDeleteConfirm = () => {
+    deleteProduct(deleteModal.productId);
+    toast.success('Producto eliminado');
+    setDeleteModal({ isOpen: false, productId: null, productName: '' });
   };
 
   const getStockStatus = (stock) => {
@@ -164,131 +99,64 @@ const AdminProducts = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold mb-2">Gestión de Productos</h1>
-          <p className="text-gray-light">{filteredProducts.length} productos encontrados</p>
+          <p className="text-gray-light">{filteredProducts.length} productos</p>
         </div>
-        <button
-          onClick={() => {
-            setEditingProduct(null);
-            setImagePreview('');
-            setFormData({
-              name: '',
-              price: '',
-              originalPrice: '',
-              category: '',
-              stock: '',
-              description: '',
-              sizes: ['S', 'M', 'L', 'XL'],
-              colors: ['Black', 'White'],
-              image: '',
-            });
-            setShowModal(true);
-          }}
-          className="btn btn-primary flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Nuevo Producto
+        <button onClick={() => { setEditingProduct(null); setFormData({ name: '', price: '', originalPrice: '', category: '', stock: '', description: '', sizes: ['S', 'M', 'L', 'XL'], colors: ['Black', 'White'], image: '', featured: false, new: false, sale: false }); setImagePreview(''); setShowModal(true); }} className="btn btn-primary flex items-center gap-2">
+          <Plus className="w-5 h-5" /> Nuevo Producto
         </button>
       </div>
 
-      {/* Filters */}
       <div className="card">
         <div className="grid md:grid-cols-3 gap-4">
-          <div className="md:col-span-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-light" />
-              <input
-                type="text"
-                placeholder="Buscar por nombre o SKU..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="input pl-10"
-              />
-            </div>
+          <div className="md:col-span-2 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-light" />
+            <input type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="input pl-10" />
           </div>
-          <div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="input"
-            >
-              <option value="">Todas las categorías</option>
-              {categories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
-              ))}
-            </select>
-          </div>
+          <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="input">
+            <option value="">Todas las categorías</option>
+            {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+          </select>
         </div>
       </div>
 
-      {/* Table */}
       <div className="card overflow-hidden p-0">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray">
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-light uppercase">Producto</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-light uppercase">Categoría</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-light uppercase">Stock</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-light uppercase">Estado</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-light uppercase">Precio</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-light uppercase">Acciones</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-light uppercase">Producto</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-light uppercase">Categoría</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-light uppercase">Stock</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-light uppercase">Estado</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-light uppercase">Precio</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-light uppercase">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {filteredProducts.map(product => {
                 const status = getStockStatus(product.stock);
-                const category = categories.find(c => c.id === product.category);
-                
                 return (
                   <tr key={product.id} className="border-b border-gray hover:bg-dark-gray/50">
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <img 
-                          src={product.image} 
-                          alt={product.name}
-                          className="w-12 h-12 rounded object-cover"
-                          onError={(e) => e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%231A1A1A" width="100" height="100"/%3E%3C/svg%3E'}
-                        />
+                        <img src={product.image} alt="" className="w-12 h-12 object-cover rounded" onError={(e) => e.target.src = 'https://via.placeholder.com/48'} />
                         <div>
                           <p className="font-medium">{product.name}</p>
                           <p className="text-xs text-gray-light">{product.sku}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="badge badge-info">{category?.name}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="font-semibold">{product.stock}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`badge ${status.class}`}>
-                        {status.label}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="font-semibold">${product.price.toLocaleString()}</span>
-                    </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3"><span className="badge badge-info">{getCategoryName(product.category)}</span></td>
+                    <td className="px-4 py-3"><span className="font-semibold">{product.stock}</span></td>
+                    <td className="px-4 py-3"><span className={`badge ${status.class}`}>{status.label}</span></td>
+                    <td className="px-4 py-3"><span className="font-semibold">${product.price.toLocaleString()}</span></td>
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="p-2 hover:bg-primary/20 rounded-lg transition-colors"
-                          title="Editar"
-                        >
-                          <Edit2 className="w-4 h-4 text-primary" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(product)}
-                          className="p-2 hover:bg-danger/20 rounded-lg transition-colors"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="w-4 h-4 text-danger" />
-                        </button>
+                        <button onClick={() => handleEdit(product)} className="p-2 hover:bg-primary/20 rounded-lg"><Edit2 className="w-4 h-4 text-primary" /></button>
+                        <button onClick={() => setDeleteModal({ isOpen: true, productId: product.id, productName: product.name })} className="p-2 hover:bg-danger/20 rounded-lg"><Trash2 className="w-4 h-4 text-danger" /></button>
                       </div>
                     </td>
                   </tr>
@@ -299,170 +167,70 @@ const AdminProducts = () => {
         </div>
       </div>
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-dark-gray border border-gray rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray flex items-center justify-between">
-              <h2 className="text-2xl font-bold">
-                {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
-              </h2>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setEditingProduct(null);
-                  setImagePreview('');
-                }}
-                className="text-gray-light hover:text-white"
-              >
-                <X className="w-6 h-6" />
-              </button>
+            <div className="p-6 border-b border-gray flex items-center justify-between sticky top-0 bg-dark-gray z-10">
+              <h2 className="text-2xl font-bold">{editingProduct ? 'Editar Producto' : 'Nuevo Producto'}</h2>
+              <button onClick={closeModal} className="text-gray-light hover:text-white"><X className="w-6 h-6" /></button>
             </div>
-            
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              {/* Upload de imagen */}
               <div>
-                <label className="block text-sm font-medium mb-2">Imagen del Producto</label>
-                
-                {imagePreview ? (
-                  <div className="relative w-40 h-40 mx-auto mb-4">
-                    <img 
-                      src={imagePreview} 
-                      alt="Preview" 
-                      className="w-full h-full object-cover rounded-lg border-2 border-primary"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setImagePreview('');
-                        setFormData(prev => ({ ...prev, image: '' }));
-                      }}
-                      className="absolute -top-2 -right-2 w-8 h-8 bg-danger rounded-full flex items-center justify-center hover:bg-danger/80 transition-colors"
-                    >
-                      <X className="w-4 h-4 text-white" />
-                    </button>
-                  </div>
-                ) : null}
-
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray border-dashed rounded-lg cursor-pointer hover:border-primary transition-colors">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <Upload className="w-8 h-8 text-gray-light mb-2" />
-                    <p className="text-sm text-gray-light">
-                      <span className="font-semibold">Click para subir</span> o arrastrá una imagen
-                    </p>
-                    <p className="text-xs text-gray-light mt-1">PNG, JPG o WEBP (máx. 5MB)</p>
-                  </div>
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                  />
-                </label>
+                <label className="block text-sm font-medium mb-2">URL de Imagen</label>
+                {imagePreview && <img src={imagePreview} alt="Preview" className="w-32 h-32 object-cover rounded-lg mb-2" onError={(e) => e.target.style.display = 'none'} />}
+                <input type="url" value={formData.image} onChange={handleImageChange} className="input" placeholder="https://..." />
               </div>
-
               <div>
                 <label className="block text-sm font-medium mb-2">Nombre *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="input"
-                  required
-                />
+                <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input" required />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">Precio *</label>
-                  <input
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className="input"
-                    required
-                  />
+                  <input type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} className="input" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Precio Original</label>
-                  <input
-                    type="number"
-                    value={formData.originalPrice}
-                    onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
-                    className="input"
-                  />
+                  <label className="block text-sm font-medium mb-2">Precio Original (oferta)</label>
+                  <input type="number" value={formData.originalPrice} onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })} className="input" />
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">Categoría *</label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="input"
-                    required
-                  >
+                  <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="input" required>
                     <option value="">Seleccionar...</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
+                    {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Stock *</label>
-                  <input
-                    type="number"
-                    value={formData.stock}
-                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                    className="input"
-                    required
-                  />
+                  <input type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: e.target.value })} className="input" required />
                 </div>
               </div>
-
               <div>
                 <label className="block text-sm font-medium mb-2">Descripción</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="input"
-                  rows="3"
-                />
+                <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="input" rows="3" />
               </div>
-
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={formData.featured} onChange={(e) => setFormData({ ...formData, featured: e.target.checked })} className="w-4 h-4 rounded" />
+                  <span className="text-sm">Destacado</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={formData.new} onChange={(e) => setFormData({ ...formData, new: e.target.checked })} className="w-4 h-4 rounded" />
+                  <span className="text-sm">Nuevo</span>
+                </label>
+              </div>
               <div className="flex justify-end gap-4 pt-4 border-t border-gray">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setEditingProduct(null);
-                    setImagePreview('');
-                  }}
-                  className="btn btn-secondary"
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingProduct ? 'Guardar Cambios' : 'Crear Producto'}
-                </button>
+                <button type="button" onClick={closeModal} className="btn btn-secondary">Cancelar</button>
+                <button type="submit" className="btn btn-primary">{editingProduct ? 'Guardar' : 'Crear'}</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Modal de Confirmación para Eliminar */}
-      <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onClose={() => setDeleteModal({ isOpen: false, productId: null, productName: '' })}
-        onConfirm={handleDeleteConfirm}
-        title="Eliminar Producto"
-        message={`¿Estás seguro que querés eliminar "${deleteModal.productName}"? Esta acción no se puede deshacer.`}
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-        type="danger"
-      />
+      <ConfirmModal isOpen={deleteModal.isOpen} onClose={() => setDeleteModal({ isOpen: false, productId: null, productName: '' })} onConfirm={handleDeleteConfirm} title="Eliminar Producto" message={`¿Eliminar "${deleteModal.productName}"?`} confirmText="Eliminar" type="danger" />
     </div>
   );
 };

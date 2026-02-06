@@ -1,37 +1,39 @@
 import { useState } from 'react';
-import { Search, Eye, Package, Truck, CheckCircle, XCircle, Clock, Filter } from 'lucide-react';
+import { Search, Eye, Package, Truck, CheckCircle, XCircle, Clock, Filter, TrendingUp, X } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { useToast } from '../../components/Toast';
 
 const AdminOrders = () => {
-  const { orders } = useStore();
+  const toast = useToast();
+  const { orders, updateOrderStatus } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  // Filtrar pedidos
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
-      order.id.toString().includes(searchTerm) ||
-      order.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.firstName?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = order.id.toString().includes(searchTerm) || order.email?.toLowerCase().includes(searchTerm.toLowerCase()) || order.firstName?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = !statusFilter || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusConfig = (status) => {
-    const configs = {
-      pending: { label: 'Pendiente', icon: Clock, class: 'badge-new' },
-      processing: { label: 'Procesando', icon: Package, class: 'badge-info' },
-      shipped: { label: 'Enviado', icon: Truck, class: 'badge-info' },
-      delivered: { label: 'Entregado', icon: CheckCircle, class: 'badge-success' },
-      cancelled: { label: 'Cancelado', icon: XCircle, class: 'badge-sale' },
-    };
-    return configs[status] || configs.pending;
+  const statusOptions = [
+    { value: 'pending', label: 'Pendiente', icon: Clock, class: 'bg-warning/20 text-warning' },
+    { value: 'processing', label: 'Procesando', icon: Package, class: 'bg-info/20 text-info' },
+    { value: 'shipped', label: 'Enviado', icon: Truck, class: 'bg-purple-500/20 text-purple-400' },
+    { value: 'delivered', label: 'Entregado', icon: CheckCircle, class: 'bg-success/20 text-success' },
+    { value: 'cancelled', label: 'Cancelado', icon: XCircle, class: 'bg-danger/20 text-danger' },
+  ];
+
+  const getStatusConfig = (status) => statusOptions.find(s => s.value === status) || statusOptions[0];
+
+  const handleStatusChange = (orderId, newStatus) => {
+    updateOrderStatus(orderId, newStatus);
+    toast.success(`Estado actualizado a "${getStatusConfig(newStatus).label}"`);
+    if (selectedOrder && selectedOrder.id === orderId) {
+      setSelectedOrder({ ...selectedOrder, status: newStatus });
+    }
   };
 
-  // Estadísticas
   const stats = {
     total: orders.length,
     pending: orders.filter(o => o.status === 'pending').length,
@@ -40,77 +42,63 @@ const AdminOrders = () => {
     revenue: orders.reduce((sum, o) => sum + o.total, 0),
   };
 
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
-        <h1 className="text-3xl font-display font-bold mb-2">Gestión de Pedidos</h1>
-        <p className="text-gray-light">{filteredOrders.length} pedidos encontrados</p>
+        <h1 className="text-2xl md:text-3xl font-display font-bold mb-2">Gestión de Pedidos</h1>
+        <p className="text-gray-light">{filteredOrders.length} pedidos</p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="card">
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="card p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-light">Total Pedidos</span>
+            <span className="text-sm text-gray-light">Total</span>
             <Package className="w-5 h-5 text-primary" />
           </div>
-          <p className="text-3xl font-bold">{stats.total}</p>
+          <p className="text-2xl font-bold">{stats.total}</p>
         </div>
-        <div className="card">
+        <div className="card p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-light">Pendientes</span>
             <Clock className="w-5 h-5 text-warning" />
           </div>
-          <p className="text-3xl font-bold">{stats.pending}</p>
+          <p className="text-2xl font-bold">{stats.pending}</p>
         </div>
-        <div className="card">
+        <div className="card p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-light">Entregados</span>
             <CheckCircle className="w-5 h-5 text-success" />
           </div>
-          <p className="text-3xl font-bold">{stats.delivered}</p>
+          <p className="text-2xl font-bold">{stats.delivered}</p>
         </div>
-        <div className="card">
+        <div className="card p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-light">Ingresos</span>
             <TrendingUp className="w-5 h-5 text-primary" />
           </div>
-          <p className="text-3xl font-bold">${(stats.revenue / 1000).toFixed(0)}k</p>
+          <p className="text-2xl font-bold">${(stats.revenue / 1000).toFixed(0)}k</p>
         </div>
       </div>
 
       {/* Filters */}
       <div className="card">
         <div className="grid md:grid-cols-3 gap-4">
-          <div className="md:col-span-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-light" />
-              <input
-                type="text"
-                placeholder="Buscar por ID, email o nombre..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="input pl-10"
-              />
-            </div>
+          <div className="md:col-span-2 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-light" />
+            <input type="text" placeholder="Buscar por ID, email o nombre..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="input pl-10" />
           </div>
-          <div>
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-light" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="input pl-10"
-              >
-                <option value="">Todos los estados</option>
-                <option value="pending">Pendiente</option>
-                <option value="processing">Procesando</option>
-                <option value="shipped">Enviado</option>
-                <option value="delivered">Entregado</option>
-                <option value="cancelled">Cancelado</option>
-              </select>
-            </div>
+          <div className="relative">
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-light" />
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input pl-10">
+              <option value="">Todos los estados</option>
+              {statusOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
           </div>
         </div>
       </div>
@@ -122,54 +110,37 @@ const AdminOrders = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray">
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-light uppercase">ID</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-light uppercase">Fecha</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-light uppercase">Cliente</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-light uppercase">Items</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-light uppercase">Total</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-light uppercase">Estado</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-light uppercase">Acciones</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-light uppercase">ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-light uppercase hidden md:table-cell">Fecha</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-light uppercase">Cliente</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-light uppercase">Total</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-light uppercase">Estado</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-light uppercase">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredOrders.map(order => {
                   const statusConfig = getStatusConfig(order.status);
-                  const StatusIcon = statusConfig.icon;
-
                   return (
                     <tr key={order.id} className="border-b border-gray hover:bg-dark-gray/50">
-                      <td className="px-6 py-4">
-                        <span className="font-semibold">#{order.id}</span>
+                      <td className="px-4 py-3 font-semibold">#{order.id.toString().slice(-4)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-light hidden md:table-cell">{formatDate(order.date)}</td>
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-sm">{order.firstName} {order.lastName}</p>
+                        <p className="text-xs text-gray-light hidden md:block">{order.email}</p>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-gray-light">
-                          {format(new Date(order.date), 'dd/MM/yyyy HH:mm', { locale: es })}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="font-medium">{order.firstName} {order.lastName}</p>
-                          <p className="text-xs text-gray-light">{order.email}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm">{order.items?.length || 0} productos</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="font-semibold">${order.total.toLocaleString()}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`badge ${statusConfig.class} flex items-center gap-1 w-fit`}>
-                          <StatusIcon className="w-3 h-3" />
-                          {statusConfig.label}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => setSelectedOrder(order)}
-                          className="p-2 hover:bg-primary/20 rounded-lg transition-colors"
-                          title="Ver detalle"
+                      <td className="px-4 py-3 font-semibold">${order.total.toLocaleString()}</td>
+                      <td className="px-4 py-3">
+                        <select
+                          value={order.status}
+                          onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                          className={`text-xs font-semibold px-2 py-1 rounded-lg border-0 cursor-pointer ${statusConfig.class}`}
                         >
+                          {statusOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                        </select>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button onClick={() => setSelectedOrder(order)} className="p-2 hover:bg-primary/20 rounded-lg" title="Ver detalle">
                           <Eye className="w-4 h-4 text-primary" />
                         </button>
                       </td>
@@ -183,9 +154,7 @@ const AdminOrders = () => {
       ) : (
         <div className="card text-center py-12">
           <Package className="w-16 h-16 text-gray-light mx-auto mb-4" />
-          <p className="text-gray-light">
-            {searchTerm || statusFilter ? 'No se encontraron pedidos con esos filtros' : 'No hay pedidos aún'}
-          </p>
+          <p className="text-gray-light">{searchTerm || statusFilter ? 'No se encontraron pedidos' : 'No hay pedidos'}</p>
         </div>
       )}
 
@@ -193,90 +162,58 @@ const AdminOrders = () => {
       {selectedOrder && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-dark-gray border border-gray rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray sticky top-0 bg-dark-gray">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">Pedido #{selectedOrder.id}</h2>
-                <button
-                  onClick={() => setSelectedOrder(null)}
-                  className="text-gray-light hover:text-white"
-                >
-                  ✕
-                </button>
-              </div>
+            <div className="p-4 md:p-6 border-b border-gray sticky top-0 bg-dark-gray flex items-center justify-between">
+              <h2 className="text-xl md:text-2xl font-bold">Pedido #{selectedOrder.id}</h2>
+              <button onClick={() => setSelectedOrder(null)} className="text-gray-light hover:text-white p-2">
+                <X className="w-6 h-6" />
+              </button>
             </div>
-
-            <div className="p-6 space-y-6">
-              {/* Status */}
+            <div className="p-4 md:p-6 space-y-6">
               <div>
                 <h3 className="font-semibold mb-2">Estado</h3>
-                <span className={`badge ${getStatusConfig(selectedOrder.status).class}`}>
-                  {getStatusConfig(selectedOrder.status).label}
-                </span>
+                <select
+                  value={selectedOrder.status}
+                  onChange={(e) => handleStatusChange(selectedOrder.id, e.target.value)}
+                  className={`text-sm font-semibold px-3 py-2 rounded-lg ${getStatusConfig(selectedOrder.status).class}`}
+                >
+                  {statusOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
               </div>
-
-              {/* Customer Info */}
               <div>
                 <h3 className="font-semibold mb-2">Cliente</h3>
-                <div className="text-sm space-y-1 text-gray-light">
+                <div className="text-sm text-gray-light space-y-1">
                   <p>{selectedOrder.firstName} {selectedOrder.lastName}</p>
                   <p>{selectedOrder.email}</p>
                   <p>{selectedOrder.phone}</p>
                 </div>
               </div>
-
-              {/* Shipping Address */}
               <div>
-                <h3 className="font-semibold mb-2">Dirección de Envío</h3>
+                <h3 className="font-semibold mb-2">Dirección</h3>
                 <div className="text-sm text-gray-light">
                   <p>{selectedOrder.address}</p>
                   <p>{selectedOrder.city}, {selectedOrder.state} {selectedOrder.zipCode}</p>
                 </div>
               </div>
-
-              {/* Items */}
               <div>
                 <h3 className="font-semibold mb-2">Productos</h3>
                 <div className="space-y-2">
                   {selectedOrder.items?.map((item, idx) => (
                     <div key={idx} className="flex gap-3 p-3 bg-gray/30 rounded-lg">
-                      <img 
-                        src={item.image} 
-                        alt={item.name}
-                        className="w-16 h-16 object-cover rounded"
-                        onError={(e) => e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%231A1A1A" width="100" height="100"/%3E%3C/svg%3E'}
-                      />
+                      <img src={item.image} alt={item.name} className="w-14 h-14 object-cover rounded" onError={(e) => e.target.src = 'https://via.placeholder.com/56'} />
                       <div className="flex-1">
                         <p className="font-medium text-sm">{item.name}</p>
-                        <p className="text-xs text-gray-light">
-                          Talle: {item.size} | Color: {item.color} | Cantidad: {item.quantity}
-                        </p>
+                        <p className="text-xs text-gray-light">{item.size} | {item.color} | x{item.quantity}</p>
                       </div>
-                      <p className="font-semibold">${(item.price * item.quantity).toLocaleString()}</p>
+                      <p className="font-semibold text-sm">${(item.price * item.quantity).toLocaleString()}</p>
                     </div>
                   ))}
                 </div>
               </div>
-
-              {/* Totals */}
               <div className="border-t border-gray pt-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Subtotal</span>
-                  <span>${selectedOrder.subtotal.toLocaleString()}</span>
-                </div>
-                {selectedOrder.discount > 0 && (
-                  <div className="flex justify-between text-sm text-success">
-                    <span>Descuento {selectedOrder.coupon?.code && `(${selectedOrder.coupon.code})`}</span>
-                    <span>-${selectedOrder.discount.toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span>Envío</span>
-                  <span>{selectedOrder.shipping === 0 ? 'GRATIS' : `$${selectedOrder.shipping.toLocaleString()}`}</span>
-                </div>
-                <div className="flex justify-between font-bold text-lg pt-2 border-t border-gray">
-                  <span>Total</span>
-                  <span className="text-primary">${selectedOrder.total.toLocaleString()}</span>
-                </div>
+                <div className="flex justify-between text-sm"><span>Subtotal</span><span>${selectedOrder.subtotal?.toLocaleString()}</span></div>
+                {selectedOrder.discount > 0 && <div className="flex justify-between text-sm text-success"><span>Descuento</span><span>-${selectedOrder.discount.toLocaleString()}</span></div>}
+                <div className="flex justify-between text-sm"><span>Envío</span><span>{selectedOrder.shipping === 0 ? 'GRATIS' : `$${selectedOrder.shipping?.toLocaleString()}`}</span></div>
+                <div className="flex justify-between font-bold text-lg pt-2 border-t border-gray"><span>Total</span><span className="text-primary">${selectedOrder.total.toLocaleString()}</span></div>
               </div>
             </div>
           </div>

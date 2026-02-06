@@ -1,151 +1,134 @@
 import { Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
-import { products } from '../../data/products';
-import { Package, DollarSign, AlertTriangle, TrendingUp, Users, ShoppingCart } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { Package, DollarSign, AlertTriangle, ShoppingCart, Users, TrendingUp } from 'lucide-react';
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const AdminDashboard = () => {
-  const { orders } = useStore();
+  const { orders, products, settings, getCustomers } = useStore();
+  const customers = getCustomers();
 
-  // Estadísticas
+  // Estadísticas reales
   const totalProducts = products.length;
-  const lowStockProducts = products.filter(p => p.stock < 10).length;
+  const lowStockProducts = products.filter(p => p.stock < settings.stockThreshold).length;
   const totalOrders = orders.length;
   const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
-  
+  const pendingOrders = orders.filter(o => o.status === 'pending').length;
+  const totalCustomers = customers.length;
+
   // Productos con stock bajo
-  const lowStockList = products
-    .filter(p => p.stock < 10)
-    .sort((a, b) => a.stock - b.stock)
-    .slice(0, 5);
+  const lowStockList = products.filter(p => p.stock < settings.stockThreshold).sort((a, b) => a.stock - b.stock).slice(0, 5);
 
-  // Stock por categoría
+  // Stock por categoría (datos reales)
   const stockByCategory = [
-    { name: 'Remeras', stock: products.filter(p => p.category === 1).reduce((sum, p) => sum + p.stock, 0) },
-    { name: 'Hoodies', stock: products.filter(p => p.category === 2).reduce((sum, p) => sum + p.stock, 0) },
-    { name: 'Pantalones', stock: products.filter(p => p.category === 3).reduce((sum, p) => sum + p.stock, 0) },
-    { name: 'Accesorios', stock: products.filter(p => p.category === 4).reduce((sum, p) => sum + p.stock, 0) },
+    { name: 'Remeras', stock: products.filter(p => p.category === 1).reduce((sum, p) => sum + p.stock, 0), fill: '#E8D5C4' },
+    { name: 'Hoodies', stock: products.filter(p => p.category === 2).reduce((sum, p) => sum + p.stock, 0), fill: '#8B7355' },
+    { name: 'Pantalones', stock: products.filter(p => p.category === 3).reduce((sum, p) => sum + p.stock, 0), fill: '#7FA98F' },
+    { name: 'Accesorios', stock: products.filter(p => p.category === 4).reduce((sum, p) => sum + p.stock, 0), fill: '#D4A574' },
   ];
 
-  // Ventas últimos 7 días (simulado)
-  const salesData = [
-    { date: '25/01', ventas: 15, ingresos: 420000 },
-    { date: '26/01', ventas: 23, ingresos: 580000 },
-    { date: '27/01', ventas: 18, ingresos: 490000 },
-    { date: '28/01', ventas: 31, ingresos: 720000 },
-    { date: '29/01', ventas: 27, ingresos: 650000 },
-    { date: '30/01', ventas: 35, ingresos: 820000 },
-    { date: '31/01', ventas: 29, ingresos: 710000 },
+  // Ventas por estado (datos reales)
+  const ordersByStatus = [
+    { name: 'Pendientes', value: orders.filter(o => o.status === 'pending').length, fill: '#FFD700' },
+    { name: 'Procesando', value: orders.filter(o => o.status === 'processing').length, fill: '#00D4FF' },
+    { name: 'Enviados', value: orders.filter(o => o.status === 'shipped').length, fill: '#BB00FF' },
+    { name: 'Entregados', value: orders.filter(o => o.status === 'delivered').length, fill: '#00FF88' },
   ];
 
-  // Top productos vendidos
-  const topProducts = [
-    { name: 'VOLT Essential Hoodie', ventas: 45 },
-    { name: 'VOLT Logo Tee', ventas: 38 },
-    { name: 'Joggers Premium', ventas: 32 },
-    { name: 'Cargo Pants', ventas: 28 },
-    { name: 'Oversized Drop Tee', ventas: 25 },
-  ];
+  // Ingresos por pedido (últimos 7 pedidos)
+  const revenueData = orders.slice(0, 7).reverse().map((order, i) => ({
+    name: `#${order.id.toString().slice(-4)}`,
+    total: order.total,
+    items: order.items?.length || 0,
+  }));
 
-  const COLORS = ['#E8D5C4', '#8B7355', '#7FA98F', '#D4A574'];
+  // Top productos vendidos (basado en orders)
+  const productSales = {};
+  orders.forEach(order => {
+    order.items?.forEach(item => {
+      productSales[item.name] = (productSales[item.name] || 0) + item.quantity;
+    });
+  });
+  const topProducts = Object.entries(productSales).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, ventas]) => ({ name: name.length > 20 ? name.substring(0, 20) + '...' : name, ventas }));
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-display font-bold mb-2">Dashboard</h1>
-        <p className="text-gray-light">Resumen general de la tienda</p>
+        <p className="text-gray-light">Datos en tiempo real de la tienda</p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card">
           <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center">
-              <Package className="w-6 h-6 text-primary" />
+            <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
+              <Package className="w-5 h-5 text-primary" />
             </div>
-            <span className="text-xs text-gray-light">Total</span>
           </div>
-          <h3 className="text-3xl font-bold mb-1">{totalProducts}</h3>
+          <h3 className="text-2xl md:text-3xl font-bold mb-1">{totalProducts}</h3>
           <p className="text-sm text-gray-light">Productos</p>
         </div>
 
         <div className="card">
           <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 bg-success/20 rounded-lg flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-success" />
+            <div className="w-10 h-10 bg-success/20 rounded-lg flex items-center justify-center">
+              <DollarSign className="w-5 h-5 text-success" />
             </div>
-            <span className="text-xs text-gray-light">Este mes</span>
           </div>
-          <h3 className="text-3xl font-bold mb-1">${(totalRevenue / 1000).toFixed(0)}k</h3>
+          <h3 className="text-2xl md:text-3xl font-bold mb-1">${(totalRevenue / 1000).toFixed(0)}k</h3>
           <p className="text-sm text-gray-light">Ingresos</p>
         </div>
 
         <div className="card">
           <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 bg-danger/20 rounded-lg flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-danger" />
+            <div className="w-10 h-10 bg-info/20 rounded-lg flex items-center justify-center">
+              <ShoppingCart className="w-5 h-5 text-info" />
             </div>
-            <span className="text-xs text-gray-light">Crítico</span>
           </div>
-          <h3 className="text-3xl font-bold mb-1">{lowStockProducts}</h3>
-          <p className="text-sm text-gray-light">Stock bajo</p>
+          <h3 className="text-2xl md:text-3xl font-bold mb-1">{totalOrders}</h3>
+          <p className="text-sm text-gray-light">Pedidos ({pendingOrders} pendientes)</p>
         </div>
 
         <div className="card">
           <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 bg-info/20 rounded-lg flex items-center justify-center">
-              <ShoppingCart className="w-6 h-6 text-info" />
+            <div className="w-10 h-10 bg-warning/20 rounded-lg flex items-center justify-center">
+              <Users className="w-5 h-5 text-warning" />
             </div>
-            <span className="text-xs text-gray-light">Total</span>
           </div>
-          <h3 className="text-3xl font-bold mb-1">{totalOrders}</h3>
-          <p className="text-sm text-gray-light">Pedidos</p>
+          <h3 className="text-2xl md:text-3xl font-bold mb-1">{totalCustomers}</h3>
+          <p className="text-sm text-gray-light">Clientes</p>
         </div>
       </div>
 
-      {/* Charts Row */}
+      {/* Charts */}
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Ventas últimos 7 días */}
+        {/* Ingresos por pedido */}
         <div className="card">
-          <h3 className="text-xl font-bold mb-6">Ventas - Últimos 7 Días</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={salesData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2A" />
-              <XAxis dataKey="date" stroke="#A0A0A0" fontSize={12} />
-              <YAxis stroke="#A0A0A0" fontSize={12} />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A' }}
-                labelStyle={{ color: '#fff' }}
-              />
-              <Legend />
-              <Line type="monotone" dataKey="ventas" stroke="#E8D5C4" strokeWidth={2} name="Ventas" />
-            </LineChart>
-          </ResponsiveContainer>
+          <h3 className="text-xl font-bold mb-6">Ingresos por Pedido</h3>
+          {revenueData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={revenueData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2A" />
+                <XAxis dataKey="name" stroke="#A0A0A0" fontSize={12} />
+                <YAxis stroke="#A0A0A0" fontSize={12} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
+                <Tooltip contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A' }} formatter={(v) => [`$${v.toLocaleString()}`, 'Total']} />
+                <Bar dataKey="total" fill="#E8D5C4" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[250px] flex items-center justify-center text-gray-light">No hay datos de pedidos</div>
+          )}
         </div>
 
         {/* Stock por categoría */}
         <div className="card">
           <h3 className="text-xl font-bold mb-6">Stock por Categoría</h3>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={250}>
             <PieChart>
-              <Pie
-                data={stockByCategory}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                outerRadius={100}
-                fill="#8884d8"
-                dataKey="stock"
-              >
-                {stockByCategory.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
+              <Pie data={stockByCategory} cx="50%" cy="50%" labelLine={false} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} outerRadius={80} dataKey="stock">
+                {stockByCategory.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}
               </Pie>
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A' }}
-              />
+              <Tooltip contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -156,48 +139,87 @@ const AdminDashboard = () => {
         {/* Top productos */}
         <div className="card">
           <h3 className="text-xl font-bold mb-6">Top Productos Vendidos</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={topProducts} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2A" />
-              <XAxis type="number" stroke="#A0A0A0" fontSize={12} />
-              <YAxis dataKey="name" type="category" stroke="#A0A0A0" fontSize={12} width={150} />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A' }}
-              />
-              <Bar dataKey="ventas" fill="#8B7355" />
-            </BarChart>
-          </ResponsiveContainer>
+          {topProducts.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={topProducts} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2A" />
+                <XAxis type="number" stroke="#A0A0A0" fontSize={12} />
+                <YAxis dataKey="name" type="category" stroke="#A0A0A0" fontSize={11} width={120} />
+                <Tooltip contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A' }} />
+                <Bar dataKey="ventas" fill="#8B7355" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[250px] flex items-center justify-center text-gray-light">No hay datos de ventas</div>
+          )}
         </div>
 
         {/* Alertas de stock bajo */}
         <div className="card">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold">Alertas de Stock Bajo</h3>
-            <Link to="/admin/products" className="text-sm text-primary hover:text-primary-dark">
-              Ver todos
-            </Link>
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-danger" />
+              Stock Bajo ({lowStockProducts})
+            </h3>
+            <Link to="/admin/products" className="text-sm text-primary hover:underline">Ver todos</Link>
           </div>
-          <div className="space-y-3 max-h-[268px] overflow-y-auto">
+          <div className="space-y-3 max-h-[250px] overflow-y-auto">
             {lowStockList.length > 0 ? (
               lowStockList.map(product => (
                 <div key={product.id} className="flex items-center justify-between p-3 bg-danger/10 border border-danger/20 rounded-lg">
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{product.name}</p>
-                    <p className="text-xs text-gray-light">{product.sku}</p>
+                  <div className="flex items-center gap-3">
+                    <img src={product.image} alt="" className="w-10 h-10 object-cover rounded" />
+                    <div>
+                      <p className="font-medium text-sm">{product.name}</p>
+                      <p className="text-xs text-gray-light">{product.sku}</p>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold text-danger">{product.stock} unidades</p>
-                    <p className="text-xs text-gray-light">Stock crítico</p>
+                    <p className="text-sm font-semibold text-danger">{product.stock} und.</p>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="text-center py-8">
-                <AlertTriangle className="w-12 h-12 text-gray-light mx-auto mb-2" />
-                <p className="text-gray-light text-sm">No hay productos con stock bajo</p>
+              <div className="text-center py-8 text-gray-light">
+                <AlertTriangle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No hay productos con stock bajo</p>
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Pedidos recientes */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold">Pedidos Recientes</h3>
+          <Link to="/admin/orders" className="text-sm text-primary hover:underline">Ver todos</Link>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-light uppercase">ID</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-light uppercase">Cliente</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-light uppercase">Total</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-light uppercase">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.slice(0, 5).map(order => (
+                <tr key={order.id} className="border-b border-gray/50">
+                  <td className="px-4 py-3 font-semibold">#{order.id}</td>
+                  <td className="px-4 py-3">{order.firstName} {order.lastName}</td>
+                  <td className="px-4 py-3 font-semibold">${order.total.toLocaleString()}</td>
+                  <td className="px-4 py-3">
+                    <span className={`badge ${order.status === 'delivered' ? 'bg-success/20 text-success' : order.status === 'shipped' ? 'bg-info/20 text-info' : order.status === 'processing' ? 'bg-warning/20 text-warning' : 'bg-primary/20 text-primary'}`}>
+                      {order.status === 'delivered' ? 'Entregado' : order.status === 'shipped' ? 'Enviado' : order.status === 'processing' ? 'Procesando' : 'Pendiente'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
