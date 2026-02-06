@@ -267,7 +267,7 @@ const ProductDetail = () => {
             <div className="grid grid-cols-3 gap-4 p-6 bg-dark-gray rounded-lg border border-gray">
               <div className="text-center">
                 <Truck className="w-8 h-8 text-primary mx-auto mb-2" />
-                <p className="text-xs text-gray-light">Envío gratis > $50k</p>
+                <p className="text-xs text-gray-light">Envío gratis &gt; $50k</p>
               </div>
               <div className="text-center">
                 <Shield className="w-8 h-8 text-primary mx-auto mb-2" />
